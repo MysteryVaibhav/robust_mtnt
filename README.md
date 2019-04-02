@@ -2,7 +2,7 @@
 Code for the paper "Improving Robustness of Machine Translation with Synthetic Noise"
 
 
-### Steps for preparing the data:
+### Steps for preparing the _EP-100k_ data used in our experiments:
 
 1. Fetch the data
 ```
