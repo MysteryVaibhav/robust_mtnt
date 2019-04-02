@@ -64,8 +64,21 @@ perl multi-bleu.perl "data/dev/dev.en" < "work_dir/decode-fr-en.txt"
 
 ### Steps for generating _EP-100k-SNI_:
 
+1. Randomly sample 100k parallel examples from _train.en_ and _train.fr_ to create _train-100k.en_ and _train-100k.fr_. 
+An easy way to do this would be to just pick the top 100k examples (this might not be most representative of the entire dataset).
+
 ```
-python artificial_noise.py data/train.fr data/train.en data/train.sni.fr data/train.sni.en "0.04,0.007,0.002,0.015"
+head -n100000 data/train.fr > data/train-100k.fr
+head -n100000 data/train.en > data/train-100k.en
+```
+
+2. Add random noise in this smaller dataset. We used the same smaller dataset across all the methods proposed in the paper.
+
+```
+python artificial_noise.py data/train.fr data/train-100k.en data/train-100k.sni.fr data/train.sni.en "0.04,0.007,0.002,0.015"
 python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/train.sni.fr -o data/train.sni.tok.fr
 python encode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i data/train.sni.en -o data/train.sni.tok.en
 ```
+
+### Steps for generating _EP-100k-UBT_:
+
