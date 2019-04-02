@@ -75,10 +75,40 @@ head -n100000 data/train.en > data/train-100k.en
 2. Add random noise in this smaller dataset. We used the same smaller dataset across all the methods proposed in the paper.
 
 ```
-python artificial_noise.py data/train.fr data/train-100k.en data/train-100k.sni.fr data/train.sni.en "0.04,0.007,0.002,0.015"
+python artificial_noise.py data/train-100k.fr data/train-100k.en data/train-100k.sni.fr data/train.sni.en "0.04,0.007,0.002,0.015"
 python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/train.sni.fr -o data/train.sni.tok.fr
 python encode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i data/train.sni.en -o data/train.sni.tok.en
 ```
 
 ### Steps for generating _EP-100k-UBT_:
 
+1. Get the TED talks data for training the two intermediate models from http://phontron.com/data/ted_talks.tar.gz
+2. Use _ted_reader.py_ provided in the repository https://github.com/neulab/word-embeddings-for-nmt for extracting parallel corpora for _en-fr_.
+3. Make sure the following files exist in the folder _ted_data/_, _train.fr_, _train.en_, _dev.fr_ and _dev.en_ (these files will be obtained using the above two steps)
+4. Prune out sentences with length more than 50.
+```
+python prune_sentences.py ted_data/train.fr ted_data/train-50.fr ted_data/train.en ted_data/train-50.en 50
+```
+5. Encode the data using the spe model trained on ted data (spe model provided).
+```
+python encode_spm.py -m sp_models/ted.fr-en.en.model -i ted_data/train-50.en -o ted_data/train.tok.en
+python encode_spm.py -m sp_models/ted.fr-en.fr.model -i ted_data/train-50.fr -o ted_data/train.tok.fr
+python encode_spm.py -m sp_models/ted.fr-en.en.model -i ted_data/dev.en -o ted_data/dev.tok.en
+python encode_spm.py -m sp_models/ted.fr-en.fr.model -i ted_data/dev.fr -o ted_data/dev.tok.fr
+python encode_spm.py -m sp_models/ted.fr-en.fr.model -i data/test.ntmt.fr -o ted_data/test.ntmt.tok.fr
+```
+4. Train the model in forward and backward direction using this data and the commands mentioned for training the baseline model.
+5. To get the noisy data using UBT i.e _EP-100k-UBT_, just decode using the best models obtained in the previous step.
+```
+python encode_spm.py -m sp_models/ted.fr-en.fr.model -i data/train-100k.fr -o data/train-100k.ted.tok.fr
+python encode_spm.py -m sp_models/ted.fr-en.en.model -i data/train-100k.en -o data/train-100k.ted.tok.en
+
+python nmt.py decode --beam-size=5 --max-decoding-time-step=100 --embed-size=512 --tie-weights=1 --n_layers=2 --vocab="vocab-ted-fr-en.bin" "work_dir/model_ted_best_forward.t7" "data/train-100k.ted.tok.fr" "work_dir/ted.decode-fr-en.tok.en"
+
+python nmt.py decode --beam-size=5 --max-decoding-time-step=100 --embed-size=512 --tie-weights=1 --n_layers=2 --vocab="ted_data/vocab-spe-reverse.bin" "work_dir/model_ted_best_backward.t7" "work_dir/ted.decode-fr-en.tok.en" "work_dir/ted.decode-fr-en.tok.fr"
+
+python decode_spm.py -m sp_models/ted.fr-en.en.model -i work_dir/ted.decode-fr-en.tok.en -o work_dir/ted.train.decode-fr-en.en
+python decode_spm.py -m sp_models/ted.fr-en.fr.model -i work_dir/ted.decode-fr-en.tok.fr -o work_dir/ted.train.decode-fr-en.fr
+```
+
+6. The files _ted.train.decode-fr-en.en_ and _ted.train.decode-fr-en.fr_ are used in finetuning for the UBT method.
