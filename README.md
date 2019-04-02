@@ -43,7 +43,7 @@ python encode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i data/dev/dev.en 
 python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/test.ntmt.fr -o data/test.ntmt.tok.fr
 ```
 
-### Steps for training the baseline model,
+### Steps for training the baseline model:
  
 1. Training the model.
 ```
@@ -60,4 +60,12 @@ python decode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i work_dir/decode-
 3. Compute the bleu score using the decoded file _decode-fr-en.txt_.
 ```
 perl multi-bleu.perl "data/dev/dev.en" < "work_dir/decode-fr-en.txt"
+```
+
+### Steps for generating _EP-100k-SNI_:
+
+```
+python artificial_noise.py data/train.fr data/train.en data/train.sni.fr data/train.sni.en "0.04,0.007,0.002,0.015"
+python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/train.sni.fr -o data/train.sni.tok.fr
+python encode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i data/train.sni.en -o data/train.sni.tok.en
 ```
