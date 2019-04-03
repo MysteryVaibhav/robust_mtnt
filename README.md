@@ -148,3 +148,10 @@ python decode_spm.py -m sp_models/ted.fr-en.en.model -i work_dir/ted.decode-fr-e
 python decode_spm.py -m sp_models/ted.fr-en.fr.model -i work_dir/ted.decode-fr-en.tag.tok.fr -o work_dir/ted.train.decode-fr-en.fr
 ```
 6. The files _ted.train.decode-fr-en.en_ and _ted.train.decode-fr-en.fr_ are used in finetuning for the TBT method.
+
+### Steps for fine-tuning an existing model with noisy data:
+
+It is same as training a new model using the additional data but with the weights loaded from a pre-trained model.
+```
+python nmt.py train --train-src="data/train.sni.tok.fr" --train-tgt="data/train.sni.tok.en" --dev-src="data/dev/dev.tok.fr" --dev-tgt="data/dev/dev.tok.en" --vocab="data/vocab.bin" --save-to="work_dir/" --valid-niter=1000 --batch-size=32 --hidden-size=256 --embed-size=512  --optim=1 --max-epoch=30 --uniform-init=0.1 --dropout=0.3 --lr=0.01 --clip-grad=20 --lr-decay=0.5 --patience=3 --tie-weights=1 --n_layers=2 --load-weights-from "work_dir/model_baseline.t7"
+```
