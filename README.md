@@ -1,6 +1,12 @@
 # robust_mtnt
-Code for the paper "Improving Robustness of Machine Translation with Synthetic Noise"
+Code for the NAACL 2019 paper "Improving Robustness of Machine Translation with Synthetic Noise"
 
+#### Dependencies
+```
+pytorch (tested on version 0.3.0.post4)
+docopt
+tqdm
+```
 
 ### Steps for preparing EP and MTNT data used in our experiments:
 
