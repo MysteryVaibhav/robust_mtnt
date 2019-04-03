@@ -29,8 +29,12 @@ sed '/<seg/!d' data/dev/newsdiscussdev2015-fren-src.fr.sgm | sed -e 's/\s*<[^>]*
 python prune_sentences.py data/europarl-v7.fr-en.fr data/europarl-v7-50.fr-en.fr data/europarl-v7.fr-en.en data/europarl-v7-50.fr-en.en 50
 head -n1000000 data/europarl-v7-50.fr-en.fr > train.fr
 head -n1000000 data/europarl-v7-50.fr-en.en > train.en
-cut -f3 -d$'\t' MTNT/test/test.fr-en.tsv > test.ntmt.en
-cut -f2 -d$'\t' MTNT/test/test.fr-en.tsv > test.ntmt.fr
+cut -f2 -d$'\t' MTNT/train/train.fr-en.tsv > train.mtnt.fr
+cut -f3 -d$'\t' MTNT/train/train.fr-en.tsv > train.mtnt.en
+cut -f2 -d$'\t' MTNT/valid/valid.fr-en.tsv > dev.mtnt.fr
+cut -f3 -d$'\t' MTNT/valid/valid.fr-en.tsv > dev.mtnt.en
+cut -f3 -d$'\t' MTNT/test/test.fr-en.tsv > test.mtnt.en
+cut -f2 -d$'\t' MTNT/test/test.fr-en.tsv > test.mtnt.fr
 ```
 
 4. Use spe encoding to create sub-word data. Highly recommended ! Below command assumes you have spe models placed in _sp_models/_, specifically, _europarl-v7.fr-en.en.model_ and _europarl-v7.fr-en.fr.model_. We have provided these files in the repository with vocab size 16k.
@@ -40,7 +44,7 @@ python encode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i data/train.en -o
 python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/dev/dev.fr -o data/dev/dev.tok.fr
 python encode_spm.py -m sp_models/europarl-v7.fr-en.en.model -i data/dev/dev.en -o data/dev/dev.tok.en
 
-python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/test.ntmt.fr -o data/test.ntmt.tok.fr
+python encode_spm.py -m sp_models/europarl-v7.fr-en.fr.model -i data/test.mtnt.fr -o data/test.mtnt.tok.fr
 ```
 
 ### Steps for training the baseline model:
@@ -95,10 +99,15 @@ python encode_spm.py -m sp_models/ted.fr-en.en.model -i ted_data/train-50.en -o 
 python encode_spm.py -m sp_models/ted.fr-en.fr.model -i ted_data/train-50.fr -o ted_data/train.tok.fr
 python encode_spm.py -m sp_models/ted.fr-en.en.model -i ted_data/dev.en -o ted_data/dev.tok.en
 python encode_spm.py -m sp_models/ted.fr-en.fr.model -i ted_data/dev.fr -o ted_data/dev.tok.fr
-python encode_spm.py -m sp_models/ted.fr-en.fr.model -i data/test.ntmt.fr -o ted_data/test.ntmt.tok.fr
+python encode_spm.py -m sp_models/ted.fr-en.fr.model -i data/test.mtnt.fr -o ted_data/test.mtnt.tok.fr
 ```
-4. Train the model in forward and backward direction using this data and the commands mentioned for training the baseline model.
-5. To get the noisy data using UBT i.e _EP-100k-UBT_, just decode using the best models obtained in the previous step.
+6. Concatenate the MTNT training data.
+```
+cat ted_data/train.tok.fr MTNT/train/train-50.mtnt.tok.fr > ted_data/train_ted_mtnt.tok.fr
+cat ted_data/train.tok.en MTNT/train/train-50.mtnt.tok.en > ted_data/train_ted_mtnt.tok.en
+```
+6. Train the model in forward and backward direction using the concatenated data and the commands mentioned for training the baseline model.
+7. To get the noisy data using UBT i.e _EP-100k-UBT_, just decode using the best models obtained in the previous step.
 ```
 python encode_spm.py -m sp_models/ted.fr-en.fr.model -i data/train-100k.fr -o data/train-100k.ted.tok.fr
 python encode_spm.py -m sp_models/ted.fr-en.en.model -i data/train-100k.en -o data/train-100k.ted.tok.en
@@ -111,4 +120,31 @@ python decode_spm.py -m sp_models/ted.fr-en.en.model -i work_dir/ted.decode-fr-e
 python decode_spm.py -m sp_models/ted.fr-en.fr.model -i work_dir/ted.decode-fr-en.tok.fr -o work_dir/ted.train.decode-fr-en.fr
 ```
 
-6. The files _ted.train.decode-fr-en.en_ and _ted.train.decode-fr-en.fr_ are used in finetuning for the UBT method.
+8. The files _ted.train.decode-fr-en.en_ and _ted.train.decode-fr-en.fr_ are used in finetuning for the UBT method.
+
+### Steps for generating _EP-100k-TBT_:
+
+1. Follow the first five steps of UBT to get the required data.
+2. Prior to concatenating the data, append the data source tag.
+```
+sed 's/^/_TED_ /g' ted_data/train.tok.fr > ted_data/train.tag.tok.fr
+sed 's/^/_MTNT_ /g' MTNT/train/train-50.mtnt.tok.fr > MTNT/train/train-50.mtnt.tag.tok.fr
+```
+3. Concatenate the above two files for _fr_ and _en_ respectively.
+```
+cat ted_data/train.tag.tok.fr MTNT/train/train-50.mtnt.tag.tok.fr > ted_data/train_ted_mtnt.tag.tok.fr
+```
+4. Use the files obtained in the above step to train the forward and backward model.
+5. To get the noisy data using TBT i.e _EP-100k-TBT_, just decode using the best models obtained in the previous step. But append the noisy data source tag before decoding.
+```
+sed 's/^/_MTNT_ /g' data/train-100k.ted.tok.fr > data/train-100k.ted.tag.tok.fr
+sed 's/^/_MTNT_ /g' data/train-100k.ted.tok.en > data/train-100k.ted.tag.tok.en
+
+python nmt.py decode --beam-size=5 --max-decoding-time-step=100 --embed-size=512 --tie-weights=1 --n_layers=2 --vocab="vocab-ted-fr-en.bin" "work_dir/model_ted_best_forward.t7" "data/train-100k.ted.tag.tok.fr" "work_dir/ted.decode-fr-en.tag.tok.en"
+
+python nmt.py decode --beam-size=5 --max-decoding-time-step=100 --embed-size=512 --tie-weights=1 --n_layers=2 --vocab="ted_data/vocab-spe-reverse.bin" "work_dir/model_ted_best_backward.t7" "work_dir/ted.decode-fr-en.tag.tok.en" "work_dir/ted.decode-fr-en.tag.tok.fr"
+
+python decode_spm.py -m sp_models/ted.fr-en.en.model -i work_dir/ted.decode-fr-en.tag.tok.en -o work_dir/ted.train.decode-fr-en.en
+python decode_spm.py -m sp_models/ted.fr-en.fr.model -i work_dir/ted.decode-fr-en.tag.tok.fr -o work_dir/ted.train.decode-fr-en.fr
+```
+6. The files _ted.train.decode-fr-en.en_ and _ted.train.decode-fr-en.fr_ are used in finetuning for the TBT method.
