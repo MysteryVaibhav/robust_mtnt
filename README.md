@@ -12,6 +12,8 @@ tqdm
 
 1. Fetch the data
 ```
+mkdir data
+mkdir work_dir
 cd data/
 wget http://www.statmt.org/europarl/v7/fr-en.tgz
 wget http://www.statmt.org/wmt15/dev-v2.tgz
@@ -160,4 +162,18 @@ python decode_spm.py -m sp_models/ted.fr-en.fr.model -i work_dir/ted.decode-fr-e
 It is same as training a new model using the additional data but with the weights loaded from a pre-trained model.
 ```
 python nmt.py train --train-src="data/train.sni.tok.fr" --train-tgt="data/train.sni.tok.en" --dev-src="data/dev/dev.tok.fr" --dev-tgt="data/dev/dev.tok.en" --vocab="data/vocab.bin" --save-to="work_dir/" --valid-niter=1000 --batch-size=32 --hidden-size=256 --embed-size=512  --optim=1 --max-epoch=30 --uniform-init=0.1 --dropout=0.3 --lr=0.01 --clip-grad=20 --lr-decay=0.5 --patience=3 --tie-weights=1 --n_layers=2 --load-weights-from "work_dir/model_baseline.t7"
+```
+
+If you use the code, please consider citing the paper using following bibtex:
+
+#### BibTex
+```
+@inproceedings{vaibhav19naacl,
+    title = {Improving Robustness of Machine Translation with Synthetic Noise},
+    author = {Vaibhav and Sumeet Singh and Craig Stewart and Graham Neubig},
+    booktitle = {Meeting of the North American Chapter of the Association for Computational Linguistics (NAACL)},
+    address = {Minneapolis, USA},
+    month = {June},
+    year = {2019}
+}
 ```
